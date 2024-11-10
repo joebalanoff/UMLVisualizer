@@ -1,29 +1,27 @@
 package umlrenderer;
 
-import java.awt.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
 import java.util.*;
 import java.util.List;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class UMLVisualizer {
     private final List<Path> allFiles;
     private final List<UMLClass> compiledClasses;
-
-    private final UMLRenderer renderer;
-
-    private Map<String, Color> classColors = new HashMap<>();
-    private List<Color> colorPalette = Arrays.asList(Color.BLUE, Color.GREEN, Color.ORANGE);
+    private final Queue<UMLClass> unresolvedClasses;
 
     private UMLVisualizer(List<Path> allFiles) {
         this.allFiles = allFiles;
         this.compiledClasses = new ArrayList<>();
+        this.unresolvedClasses = new LinkedList<>();
 
-        this.renderer = new UMLRenderer(this);
+        new UMLRenderer(this);
     }
 
     public static void init() {
@@ -71,32 +69,48 @@ public class UMLVisualizer {
                 e.printStackTrace();
             }
         }
+        resolveUnresolvedClasses();
     }
 
     private void parseJavaFile(String content) {
         String className = extractClassName(content);
-        UMLClass newClass = new UMLClass(className, extractMethods(content), extractFields(content), false);
+        UMLClass newClass = new UMLClass(className, extractMethods(content), extractFields(content), isAbstractClass(content));
 
         String parentClassName = extractParentClassName(content);
         if (parentClassName != null) {
-            UMLClass parentClass = findOrCreateClass(parentClassName);
-            newClass.setParentClass(parentClass);
+            UMLClass parentClass = findClass(parentClassName);
+            if(parentClass != null) {
+                newClass.setParentClass(parentClass);
+            } else {
+                unresolvedClasses.add(newClass);
+                newClass.setParentClassName(parentClassName);
+            }
         }
-
         compiledClasses.add(newClass);
+    }
+
+    private UMLClass findClass(String className) {
+        return compiledClasses.stream()
+                .filter(umlClass -> umlClass.getClassName().equals(className))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void resolveUnresolvedClasses() {
+        for(UMLClass unresolvedClass : unresolvedClasses) {
+            UMLClass parentClass = findClass(unresolvedClass.getParentClassName());
+            if(parentClass != null) {
+                unresolvedClass.setParentClass(parentClass);
+            } else {
+                System.err.println("Unresolved parent class: " + unresolvedClass.getParentClassName());
+            }
+        }
     }
 
     private String extractParentClassName(String content) {
         Pattern pattern = Pattern.compile("class\\s+\\w+\\s+extends\\s+(\\w+)");
         Matcher matcher = pattern.matcher(content);
         return matcher.find() ? matcher.group(1) : null;
-    }
-
-    private UMLClass findOrCreateClass(String className) {
-        return compiledClasses.stream()
-                .filter(umlClass -> umlClass.getClassName().equals(className))
-                .findFirst()
-                .orElseGet(() -> new UMLClass(className, new ArrayList<>(), new ArrayList<>(), false));
     }
 
     private String extractClassName(String content) {
@@ -107,6 +121,13 @@ public class UMLVisualizer {
             return matcher.group(2);
         }
         return null;
+    }
+
+    private boolean isAbstractClass(String content) {
+        String abstractPattern = "abstract\\s+class\\s+\\w+";
+        Pattern pattern = Pattern.compile(abstractPattern);
+        Matcher matcher = pattern.matcher(content);
+        return matcher.find();
     }
 
     private List<String> extractMethods(String content) {
@@ -158,7 +179,7 @@ public class UMLVisualizer {
         return accessModifier.equals("public") ? "+" : (accessModifier.equals("private") ? "-" : "#");
     }
 
-    public List<UMLClass> getCompiledClasses() {
+    List<UMLClass> getCompiledClasses() {
         return compiledClasses;
     }
 }

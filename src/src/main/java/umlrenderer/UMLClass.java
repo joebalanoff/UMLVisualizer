@@ -8,6 +8,7 @@ class UMLClass {
     private final List<String> methods;
     private final List<String> fields;
     private UMLClass parentClass;
+    private String parentClassName;
     private final List<UMLClass> subclasses = new ArrayList<>();
 
     private final boolean isAbstract;
@@ -17,6 +18,8 @@ class UMLClass {
         this.methods = methods;
         this.fields = fields;
         this.isAbstract = isAbstract;
+
+        this.parentClassName = "";
     }
 
     public void addSubclass(UMLClass subclass) {
@@ -41,11 +44,20 @@ class UMLClass {
 
     public void setParentClass(UMLClass parent) {
         this.parentClass = parent;
+        this.parentClassName = parent.getClassName();
         parent.subclasses.add(this);
+    }
+
+    public void setParentClassName(String parentClassName) {
+        this.parentClassName = parentClassName;
     }
 
     public UMLClass getParentClass() {
         return parentClass;
+    }
+
+    public String getParentClassName() {
+        return parentClassName;
     }
 
     public List<UMLClass> getSubclasses() {

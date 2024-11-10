@@ -2,7 +2,7 @@ package example;
 
 import umlrenderer.UMLVisualizer;
 
-public class Main {
+public class Entry {
     public static void main(String[] args) {
         UMLVisualizer.init();
     }
