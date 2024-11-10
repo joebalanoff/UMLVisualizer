@@ -1,3 +1,5 @@
+![Build Status](https://github.com/joebalanoff/UMLVisualizer/actions/workflows/maven-publish.yml/badge.svg)
+
 # UMLVisualizer
 UMLVisualizer is a Java-based tool that dynamically generates UML diagrams from Java code. It parses Java files, extracts key information, and displays it in an intuitive, navigable canvas. Designed to streamline code analysis and improve documentation, UMLVisualizer adapts to various project structures with minimal configuration.
 
