@@ -146,7 +146,7 @@ public class UMLVisualizer {
             StringBuilder paramTypesOnly = new StringBuilder();
             for (String param : paramList) {
                 String[] typeParts = param.trim().split("\\s+");
-                paramTypesOnly.append(typeParts[0]).append(" ");
+                paramTypesOnly.append(typeParts[0]);
                 if (typeParts.length > 1 && typeParts[1].contains("<")) {
                     paramTypesOnly.append(typeParts[1]);
                 }

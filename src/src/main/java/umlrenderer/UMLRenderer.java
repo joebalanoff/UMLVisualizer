@@ -17,14 +17,12 @@ class UMLRenderer extends JPanel {
     private double zoomFactor = 1.0;
     private int initialClickX, initialClickY;
 
-    private UMLClass selectedClass = null;
-
     private final Map<UMLClass, Color> classColors = new HashMap<>();
     private final Color[] colorPalette = {
             new Color(0xFF8080),
             new Color(0x699DFF),
             new Color(0xFFED91),
-            new Color(0xFFAC73),
+            //new Color(0xFFAC73),
             new Color(0xE37DFF)
     };
 
@@ -110,21 +108,25 @@ class UMLRenderer extends JPanel {
     private void drawClassHierarchy(Graphics2D g2d, UMLClass umlClass, int x, int y) {
         Color classColor = assignColor(umlClass);
 
-        int height = renderClass(g2d, umlClass, x, y, classColor, umlClass.equals(selectedClass));
+        boolean selected = false;
+
+        int height = renderClass(g2d, umlClass, x, y, classColor, selected);
 
         int spacing = 40;
 
-        int totalWidth = 0;
-        for (UMLClass subclass : umlClass.getSubclasses()) {
-            totalWidth += getMaxTextWidth(g2d, subclass) + spacing * 2;
-        }
-        totalWidth -= spacing * 2;
+        if(selected) {
+            int totalWidth = 0;
+            for (UMLClass subclass : umlClass.getSubclasses()) {
+                totalWidth += getMaxTextWidth(g2d, subclass) + spacing * 2;
+            }
+            totalWidth -= spacing * 2;
 
-        int currentX = x - (totalWidth - getMaxTextWidth(g2d, umlClass)) / 2;
-        for (UMLClass subclass : umlClass.getSubclasses()) {
-            int subclassWidth = getMaxTextWidth(g2d, subclass);
-            drawClassHierarchy(g2d, subclass, currentX, y + height + spacing);
-            currentX += subclassWidth + spacing * 2;
+            int currentX = x - (totalWidth - getMaxTextWidth(g2d, umlClass)) / 2;
+            for (UMLClass subclass : umlClass.getSubclasses()) {
+                int subclassWidth = getMaxTextWidth(g2d, subclass);
+                drawClassHierarchy(g2d, subclass, currentX, y + height + spacing);
+                currentX += subclassWidth + spacing * 2;
+            }
         }
     }
 
