@@ -17,6 +17,8 @@ class UMLRenderer extends JPanel {
     private double zoomFactor = 1.0;
     private int initialClickX, initialClickY;
 
+    private UMLClass selectedClass = null;
+
     private final Map<UMLClass, Color> classColors = new HashMap<>();
     private final Color[] colorPalette = {
             new Color(0xFF8080),
@@ -105,57 +107,49 @@ class UMLRenderer extends JPanel {
         }
     }
 
-    private int drawClassHierarchy(Graphics2D g2d, UMLClass umlClass, int x, int y) {
+    private void drawClassHierarchy(Graphics2D g2d, UMLClass umlClass, int x, int y) {
         Color classColor = assignColor(umlClass);
-        int width = getMaxTextWidth(g2d, umlClass) + 20;
-        int subY = y + 100;
 
-        int totalSubclassesWidth = 0;
-        int spacing = 20;
-        Map<UMLClass, Integer> subclassWidths = new HashMap<>();
+        int height = renderClass(g2d, umlClass, x, y, classColor, umlClass.equals(selectedClass));
 
+        int spacing = 40;
+
+        int totalWidth = 0;
         for (UMLClass subclass : umlClass.getSubclasses()) {
-            int subclassWidth = getMaxTextWidth(g2d, subclass) + 20;
-            subclassWidths.put(subclass, subclassWidth);
-            totalSubclassesWidth += subclassWidth;
+            totalWidth += getMaxTextWidth(g2d, subclass) + spacing * 2;
         }
+        totalWidth -= spacing * 2;
 
-        int totalWidthWithSpacing = totalSubclassesWidth + spacing * (umlClass.getSubclasses().size() - 1);
-
-        int subclassX = x + width / 2 - totalWidthWithSpacing / 2;
-
+        int currentX = x - (totalWidth - getMaxTextWidth(g2d, umlClass)) / 2;
         for (UMLClass subclass : umlClass.getSubclasses()) {
-            int subclassWidth = subclassWidths.get(subclass);
-
-            g2d.drawLine(x + width / 2, y + 40, subclassX + subclassWidth / 2, subY);
-
-            subclassX = drawClassHierarchy(g2d, subclass, subclassX, subY + 50) + spacing;
+            int subclassWidth = getMaxTextWidth(g2d, subclass);
+            drawClassHierarchy(g2d, subclass, currentX, y + height + spacing);
+            currentX += subclassWidth + spacing * 2;
         }
-
-        renderClass(g2d, umlClass, x, y, classColor);
-        return subY;
     }
 
-    private void renderClass(Graphics2D g2d, UMLClass umlClass, int x, int y, Color color) {
+    private int renderClass(Graphics2D g2d, UMLClass umlClass, int x, int y, Color color, boolean selected) {
         int padding = 10;
         int maxWidth = getMaxTextWidth(g2d, umlClass) + padding * 2;
 
         int lineHeight = g2d.getFontMetrics().getHeight();
         int boxHeight = (umlClass.getFields().size() + umlClass.getMethods().size() + 1) * lineHeight + padding * 4;
 
-        if (umlClass.isAbstract()) {
-            float[] dashPattern = {5, 5};
-            g2d.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 1, dashPattern, 0));
-        } else {
-            g2d.setStroke(new BasicStroke(1));
+        if(selected) {
+            g2d.setColor(Color.black);
+            g2d.fillRect(x - 2, y - 2, maxWidth + 4, boxHeight + 4);
         }
+
         g2d.setColor(Color.white);
         g2d.fillRect(x, y, maxWidth, boxHeight);
 
+        // Fill class name area
         int classNameHeight = lineHeight + padding;
-        g2d.setFont(g2d.getFont().deriveFont(umlClass.isAbstract() ? Font.ITALIC : Font.PLAIN));
         g2d.setColor(color);
         g2d.fillRect(x, y, maxWidth, classNameHeight);
+
+        // Draw class name
+        g2d.setFont(g2d.getFont().deriveFont(umlClass.isAbstract() ? Font.ITALIC : Font.PLAIN));
         g2d.setColor(Color.BLACK);
         g2d.drawString(umlClass.getClassName(), x + padding, y + lineHeight);
 
@@ -170,6 +164,8 @@ class UMLRenderer extends JPanel {
             g2d.drawString(method, x + padding, textY);
             textY += lineHeight;
         }
+
+        return boxHeight;
     }
 
     private int getMaxTextWidth(Graphics2D g2d, UMLClass umlClass) {
