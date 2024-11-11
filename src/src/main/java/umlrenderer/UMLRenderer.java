@@ -10,11 +10,12 @@ import java.util.Map;
 
 class UMLRenderer extends JPanel {
     private final UMLVisualizer visualizer;
-    private final JFrame frame;
+
+    private final Map<UMLClass, Rectangle> classBounds = new HashMap<>();
+    private UMLClass selectedClass = null;
 
     private int targetOffsetX = 0, targetOffsetY = 0;
     private double canvasOffsetX = 0, canvasOffsetY = 0;
-    private double zoomFactor = 1.0;
     private int initialClickX, initialClickY;
 
     private final Map<UMLClass, Color> classColors = new HashMap<>();
@@ -28,20 +29,39 @@ class UMLRenderer extends JPanel {
 
     public UMLRenderer(UMLVisualizer visualizer) {
         this.visualizer = visualizer;
-        this.frame = new JFrame("UML Visualizer");
-        this.frame.setSize(960, 540);
-        this.frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        this.frame.setLocationRelativeTo(null);
-        this.frame.setResizable(false);
+        JFrame frame = new JFrame("UML Visualizer");
+        frame.setSize(960, 540);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLocationRelativeTo(null);
+        frame.setResizable(false);
 
-        this.frame.add(this);
-        this.frame.setVisible(true);
+        frame.add(this);
+        frame.setVisible(true);
 
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
                 initialClickX = e.getX();
                 initialClickY = e.getY();
+
+                int clickX = (int) ((e.getX() - canvasOffsetX));
+                int clickY = (int) ((e.getY() - canvasOffsetY));
+
+                boolean foundClass = false;
+                for (Map.Entry<UMLClass, Rectangle> entry : classBounds.entrySet()) {
+                    UMLClass umlClass = entry.getKey();
+                    Rectangle bounds = entry.getValue();
+
+                    if (bounds.contains(clickX, clickY)) {
+                        selectedClass = getTopLevelClass(umlClass);
+                        foundClass = true;
+                        repaint();
+                        break;
+                    }
+                }
+                if(!foundClass) {
+                    selectedClass = null;
+                }
             }
         });
 
@@ -53,17 +73,6 @@ class UMLRenderer extends JPanel {
                 initialClickX = e.getX();
                 initialClickY = e.getY();
             }
-        });
-
-        addMouseWheelListener(e -> {
-            double zoomChange = e.getPreciseWheelRotation() * 0.1;
-            double newZoomFactor = Math.max(0.5, Math.min(2.0, zoomFactor - zoomChange));
-
-            if (newZoomFactor != zoomFactor) {
-                zoomFactor = newZoomFactor;
-            }
-
-            repaint();
         });
 
         Timer timer = new Timer(16, e -> {
@@ -93,24 +102,39 @@ class UMLRenderer extends JPanel {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
-        g2d.scale(zoomFactor, zoomFactor);
         g2d.translate(canvasOffsetX, canvasOffsetY);
 
+        classBounds.clear();
+
         int offset = 0;
+        int selectedClassOffset = 0;
         for (UMLClass umlClass : visualizer.getCompiledClasses()) {
             if (umlClass.getParentClass() == null) {
-                drawClassHierarchy(g2d, umlClass, offset, 0);
+                if(selectedClass == null || !selectedClass.equals(umlClass)) {
+                    drawClassHierarchy(g2d, umlClass, offset, 0);
+                } else {
+                    selectedClassOffset = offset;
+                }
                 offset += getMaxTextWidth(g2d, umlClass) + 50;
             }
+        }
+        if(selectedClass != null) {
+            g2d.translate(-canvasOffsetX, -canvasOffsetY);
+            g2d.setColor(new Color(0x40000000, true));
+            g2d.fillRect(0, 0, getWidth(), getHeight());
+            g2d.translate(canvasOffsetX, canvasOffsetY);
+            drawClassHierarchy(g2d, selectedClass, selectedClassOffset, 0);
         }
     }
 
     private void drawClassHierarchy(Graphics2D g2d, UMLClass umlClass, int x, int y) {
         Color classColor = assignColor(umlClass);
 
-        boolean selected = false;
+        boolean selected = umlClass.equals(selectedClass);
 
         int height = renderClass(g2d, umlClass, x, y, classColor, selected);
+
+        classBounds.put(umlClass, new Rectangle(x, y, getMaxTextWidth(g2d, umlClass) + 20, height));
 
         int spacing = 40;
 
@@ -136,11 +160,6 @@ class UMLRenderer extends JPanel {
 
         int lineHeight = g2d.getFontMetrics().getHeight();
         int boxHeight = (umlClass.getFields().size() + umlClass.getMethods().size() + 1) * lineHeight + padding * 4;
-
-        if(selected) {
-            g2d.setColor(Color.black);
-            g2d.fillRect(x - 2, y - 2, maxWidth + 4, boxHeight + 4);
-        }
 
         g2d.setColor(Color.white);
         g2d.fillRect(x, y, maxWidth, boxHeight);
